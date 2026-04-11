@@ -2,8 +2,8 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SINDO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SINDO - Sistem Informasi Dosis Obat</title>
 
     <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -12,7 +12,7 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
-    <!-- Babel (agar JSX bisa jalan di HTML) -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   </head>
 
@@ -23,7 +23,7 @@
       const { useMemo, useState } = React;
 
       const DRUG_DEFAULTS = {
-        Norepinephrine: { amount: 4 }, // mg
+        Norepinephrine: { amount: 4 },
         Dobutamin: { amount: 250 },
         Dopamin: { amount: 200 },
         Nicardipine: { amount: 10 },
@@ -33,12 +33,17 @@
         Midazolam: { amount: 50 },
       };
 
+      // Konfigurasi Satuan
+      const UNITS = {
+        MICRO: { label: "Mikro (mcg)", factor: 1 },
+        NANO: { label: "Nano (ng)", factor: 0.001 }
+      };
+
       function toNumber(val) {
         const n = Number(val);
         return Number.isFinite(n) ? n : NaN;
       }
 
-      // Ikon SVG mini (pengganti lucide-react di HTML)
       function Icon({ children, className = "" }) {
         return (
           <span className={"inline-flex items-center justify-center " + className}>
@@ -97,6 +102,7 @@
 
       function App() {
         const [drug, setDrug] = useState("Norepinephrine");
+        const [unitType, setUnitType] = useState("MICRO"); // Default ke Mikro
         const [weight, setWeight] = useState("");
         const [dose, setDose] = useState("");
         const [amountMg, setAmountMg] = useState(String(DRUG_DEFAULTS.Norepinephrine.amount));
@@ -117,46 +123,45 @@
           const out = { amountMcg: 0, concentration: 0, rate: 0, warning: "" };
 
           if (!Number.isFinite(w) || !Number.isFinite(d) || !Number.isFinite(aMg) || !Number.isFinite(v)) return out;
-          if (w <= 0 || aMg <= 0 || v <= 0) return out;
-          if (d <= 0) return out;
+          if (w <= 0 || aMg <= 0 || v <= 0 || d <= 0) return out;
 
           const amountMcg = aMg * 1000;
           const concentration = amountMcg / v;
           if (concentration <= 0) return out;
 
-          const rate = (d * w * 60) / concentration;
+          // LOGIKA DOSIS: Jika Nano, d dikalikan 0.001 agar menjadi mcg
+          const doseInMcg = d * UNITS[unitType].factor;
+          const rate = (doseInMcg * w * 60) / concentration;
 
           out.amountMcg = amountMcg;
           out.concentration = concentration;
           out.rate = Number.isFinite(rate) && rate > 0 ? rate : 0;
 
-          if (w < 1 || w > 250) out.warning = "Berat badan di luar rentang umum. Mohon cek ulang.";
-          if (out.rate > 200) out.warning = out.warning || "Rate sangat tinggi. Mohon cek ulang konsentrasi & input.";
+          if (w < 1 || w > 250) out.warning = "Berat badan di luar rentang umum.";
+          if (out.rate > 200) out.warning = out.warning || "Rate sangat tinggi. Cek ulang input.";
 
           return out;
-        }, [weight, dose, amountMg, volumeMl]);
+        }, [weight, dose, amountMg, volumeMl, unitType]);
 
         return (
-          <div className="min-h-screen bg-slate-100 py-8 px-4 flex justify-center items-center font-sans text-slate-800">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
-              <div className="bg-gray-600 text-white p-6 relative overflow-hidden">
-              <img src="img/RSUDK.png" className="absolute top-4 left-4 w-16 h-16 object-contain" />
-              <img src="img/logobjn.png" className="absolute top-4 right-4 w-16 h-16 object-contain" />
-                <img src="img/backgroundrs.jpg" className="absolute inset-0 w-full h-full object-cover opacity-20" />
-                <div className="absolute top-0 right-0 opacity-10">
-                  <div className="text-white" style={{ transform: "translate(2rem, -2rem)" }}>
-                    <svg viewBox="0 0 24 24" className="w-36 h-36" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="relative z-10 flex flex-col items-center text-center space-y-0">
-                   <h1 className="text-4xl font-semibold tracking-[0.3em] text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.6)]">SINDO</h1>
-                  <p className="text-blue-100 text-italic">Sistem Informasi Dosis Obat</p>
+          <div className="min-h-[100dvh] w-full bg-slate-100 flex justify-center items-start sm:items-center p-0 sm:p-4 font-sans text-slate-800">
+            <div className="bg-white sm:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-0 sm:border border-slate-200 min-h-[100dvh] sm:min-h-0 flex flex-col">
+              
+              {/* HEADER RESMI */}
+              <div className="bg-gray-600 text-white p-6 relative overflow-hidden flex-shrink-0">
+                <img src="img/RSUDK.png" className="absolute top-4 left-4 w-10 h-10 sm:w-14 sm:h-14 object-contain z-20" alt="Logo Kiri" />
+                <img src="img/logobjn.png" className="absolute top-4 right-4 w-10 h-10 sm:w-14 sm:h-14 object-contain z-20" alt="Logo Kanan" />
+                
+                <img src="img/backgroundrs.jpg" className="absolute inset-0 w-full h-full object-cover opacity-20" alt="Background" />
+                
+                <div className="relative z-10 flex flex-col items-center text-center">
+                  <h1 className="text-4xl font-semibold tracking-[0.3em] text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.6)]">SINDO</h1>
+                  <p className="text-blue-100 italic text-sm">Sistem Informasi Dosis Obat</p>
                 </div>
               </div>
-              <div className="p-6 space-y-5">
+
+              <div className="p-6 space-y-5 flex-grow">
+                {/* PILIHAN OBAT */}
                 <div className="space-y-1">
                   <label className="text-sm font-semibold text-slate-600 flex items-center gap-2">
                     <span className="text-blue-500">{Icons.syringe({})}</span> Nama Obat
@@ -164,7 +169,7 @@
                   <select
                     value={drug}
                     onChange={handleDrugChange}
-                    className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-slate-50"
+                    className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-slate-50 font-medium"
                   >
                     {Object.keys(DRUG_DEFAULTS).map((d) => (
                       <option key={d} value={d}>{d}</option>
@@ -172,6 +177,29 @@
                   </select>
                 </div>
 
+                {/* PILIHAN SATUAN (MIKRO / NANO) */}
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-slate-600 flex items-center gap-2">
+                    <span className="text-blue-500">{Icons.info({})}</span> Pilih Satuan Dosis
+                  </label>
+                  <div className="flex gap-2">
+                    {Object.entries(UNITS).map(([key, value]) => (
+                      <button
+                        key={key}
+                        onClick={() => setUnitType(key)}
+                        className={`flex-1 py-2 px-3 rounded-xl border-2 transition-all text-xs font-bold uppercase ${
+                          unitType === key 
+                          ? "bg-blue-600 border-blue-600 text-white shadow-lg" 
+                          : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                        }`}
+                      >
+                        {value.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* BERAT BADAN & DOSIS */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-sm font-semibold text-slate-600 flex items-center gap-2">
@@ -183,8 +211,7 @@
                         value={weight}
                         onChange={(e) => setWeight(e.target.value)}
                         placeholder="0"
-                        min="0"
-                        className="w-full p-3 pr-10 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        className="w-full p-3 pr-10 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold"
                       />
                       <span className="absolute right-3 top-3.5 text-slate-400 text-sm font-medium">kg</span>
                     </div>
@@ -192,94 +219,95 @@
 
                   <div className="space-y-1">
                     <label className="text-sm font-semibold text-slate-600 flex items-center gap-2">
-                      <span className="text-blue-500">{Icons.calc({})}</span> Dosis
+                      <span className="text-blue-500">{Icons.calc({})}</span> Dosis Input
                     </label>
-                    <input
-                      type="number"
-                      value={dose}
-                      onChange={(e) => setDose(e.target.value)}
-                      placeholder="0"
-                      step="0.01"
-                      min="0"
-                      className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                    />
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={dose}
+                        onChange={(e) => setDose(e.target.value)}
+                        placeholder="0"
+                        step="0.01"
+                        className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-blue-700"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-blue-50 text-blue-700 p-2 rounded-lg text-xs font-medium text-center border border-blue-100 flex items-center justify-center gap-1.5">
-                  <span>{Icons.info({})}</span> Satuan Dosis: mcg/kgBB/menit
+                {/* INFO SATUAN */}
+                <div className="bg-blue-50 text-blue-700 p-2 rounded-lg text-[11px] font-bold text-center border border-blue-100 flex items-center justify-center gap-1.5 uppercase tracking-wider">
+                  <span>{Icons.info({})}</span> Format: {unitType === 'MICRO' ? 'mcg' : 'ng'}/kgBB/menit
                 </div>
 
+                {/* SEDIAAN & VOLUME */}
                 <div className="border-t border-slate-100 pt-4 mt-2 grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-600">Sediaan Obat</label>
+                    <label className="text-[11px] font-bold text-slate-500 uppercase">Sediaan Obat</label>
                     <div className="relative">
                       <input
                         type="number"
                         value={amountMg}
                         onChange={(e) => setAmountMg(e.target.value)}
-                        min="0"
                         className="w-full p-2.5 pr-10 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                       />
-                      <span className="absolute right-3 top-3 text-slate-400 text-xs font-medium">mg</span>
+                      <span className="absolute right-2 top-3 text-slate-400 text-[10px] font-bold">mg</span>
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-600">Volume Pelarut</label>
+                    <label className="text-[11px] font-bold text-slate-500 uppercase">Volume Pelarut</label>
                     <div className="relative">
                       <input
                         type="number"
                         value={volumeMl}
                         onChange={(e) => setVolumeMl(e.target.value)}
-                        min="0"
                         className="w-full p-2.5 pr-10 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                       />
-                      <span className="absolute right-3 top-3 text-slate-400 text-xs font-medium">mL (cc)</span>
+                      <span className="absolute right-3 top-3 text-slate-400 text-[10px] font-bold">mL</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 space-y-1">
+                {/* RINGKASAN KONSENTRASI */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[11px] text-slate-600 space-y-1">
                   <div className="flex justify-between">
-                    <span>Total obat</span>
-                    <span className="font-semibold">
-                      {calc.amountMcg ? `${calc.amountMcg.toFixed(0)} mcg` : "-"}
+                    <span>Konsentrasi Obat</span>
+                    <span className="font-bold text-slate-800">
+                      {calc.concentration ? `${calc.concentration.toLocaleString()} mcg/mL` : "-"}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Konsentrasi</span>
-                    <span className="font-semibold">
-                      {calc.concentration ? `${calc.concentration.toFixed(2)} mcg/mL` : "-"}
-                    </span>
-                  </div>
-                  {calc.warning ? (
-                    <div className="mt-2 text-red-600 font-semibold">{calc.warning}</div>
-                  ) : null}
+                  {calc.warning && (
+                    <div className="mt-2 text-red-600 font-bold animate-pulse uppercase text-[10px]">
+                      {calc.warning}
+                    </div>
+                  )}
                 </div>
 
-                <div className="mt-6 bg-slate-800 rounded-2xl p-6 text-center shadow-inner relative overflow-hidden">
-                  <p className="text-slate-300 text-sm font-medium mb-1">Kecepatan (Rate) Syringe Pump:</p>
+                {/* HASIL AKHIR RATE */}
+                <div className="mt-4 bg-slate-800 rounded-2xl p-6 text-center shadow-inner relative overflow-hidden border-b-4 border-blue-500">
+                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Kecepatan Syringe Pump</p>
                   <div className="flex items-end justify-center gap-2">
-                    <span className="text-4xl font-extrabold text-white">
+                    <span className="text-4xl sm:text-5xl font-black text-white">
                       {calc.rate ? calc.rate.toFixed(2) : "0.00"}
                     </span>
-                    <span className="text-lg font-medium text-blue-300 mb-1">mL/jam</span>
+                    <span className="text-lg font-bold text-blue-400 mb-1">mL/jam</span>
                   </div>
                 </div>
               </div>
 
+              {/* FOOTER PERINGATAN */}
               <div className="bg-red-50 p-5 border-t border-red-100 flex gap-3 items-start">
                 <div className="bg-red-100 text-red-600 p-2 rounded-full flex-shrink-0">
                   {Icons.alert({})}
                 </div>
                 <div>
-                  <h3 className="text-red-800 font-bold text-sm mb-0.5">PERINGATAN!</h3>
-                  <p className="text-red-700 text-xs leading-relaxed font-medium">
-                    Mohon selalu lakukan <strong>Double Check</strong> perhitungan dan konsentrasi obat dengan rekan sejawat sebelum melakukan penyetingan alat dan memberikan obat kepada pasien.
+                  <h3 className="text-red-800 font-bold text-sm mb-0.5 uppercase tracking-tighter">Peringatan Penting!</h3>
+                  <p className="text-red-700 text-[10px] leading-relaxed font-semibold">
+                    Lakukan <strong>Double Check</strong> perhitungan dengan rekan sejawat. Pastikan <strong>Konsentrasi Obat</strong> dan <strong>Satuan</strong> (Mikro/Nano) sudah sesuai sebelum memberikan ke pasien.
                   </p>
                 </div>
               </div>
+              
             </div>
           </div>
         );
